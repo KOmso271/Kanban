@@ -40,11 +40,11 @@ select {
   /* background-position: right 10px center; */
   background-size: 15px;
   background-position: right 10px center;
+}
 
 select::-ms-expand {
   display: none;
 }
-
 
 select {
   appearance: base-select;
