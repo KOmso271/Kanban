@@ -22,7 +22,7 @@ export default function ForgotPasswordPage() {
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       // Đường link hệ thống sẽ dẫn người dùng tới sau khi họ bấm vào Email
-      redirectTo: 'http://localhost:3000/auth/callback?next=/update-password'
+      redirectTo: 'kanban-kappa-sandy.vercel.app/auth/callback?next=/update-password'
     });
 
     if (error) {
