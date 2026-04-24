@@ -1,36 +1,35 @@
 import { NextResponse } from 'next/server'
-
-// 1. IMPORT CHUẨN: Lấy trực tiếp biến supabase từ file lib
 import { supabase } from '@/lib/supabase'
 
 export async function GET(request: Request) {
-  console.log("🚨 ĐÃ CHẠY VÀO FILE ROUTE.TS THÀNH CÔNG!");
-  
-  // Lấy toàn bộ URL và bóc tách các tham số sau dấu ?
   const { searchParams, origin } = new URL(request.url)
   
-  const token_hash = searchParams.get('token_hash')
-  const type = searchParams.get('type')
+  const code = searchParams.get('code') // Thường reset password sẽ trả về code
   const next = searchParams.get('next') ?? '/'
 
-  // Nếu URL có chứa token_hash và type
-  if (token_hash && type) {
+  if (code) {
+    // Đổi code lấy session (đây là cách bảo mật hơn)
+    const { error } = await supabase.auth.exchangeCodeForSession(code)
     
-    // 2. XÁC MINH TRỰC TIẾP: Dùng luôn biến supabase đã import
-    const { data, error } = await supabase.auth.verifyOtp({
-      type: type as any,
-      token_hash,
-    })
-
-    // 3. THÀNH CÔNG VÀ CÓ SESSION
-    if (!error && data?.session) {
-      // Nối thêm access_token vào URL dạng Hash (#) để Client tự nhận diện
-      const redirectUrl = `${origin}${next}#access_token=${data.session.access_token}&refresh_token=${data.session.refresh_token}`
-      return NextResponse.redirect(redirectUrl)
+    if (!error) {
+      // Sau khi exchange thành công, Supabase sẽ tự lưu session vào Cookie 
+      // (nếu bạn cấu hình createServerClient chuẩn)
+      return NextResponse.redirect(`${origin}${next}`)
     }
   }
 
-  // 4. THẤT BẠI: Mã hết hạn hoặc đã bị sử dụng -> Đá về trang đăng nhập
-  return NextResponse.redirect(`${origin}/login?error=
-invalid_link`)
+  // Nếu dùng token_hash (OTP/Magic Link)
+  const token_hash = searchParams.get('token_hash')
+  const type = searchParams.get('type')
+  if (token_hash && type) {
+    const { error } = await supabase.auth.verifyOtp({
+      type: type as any,
+      token_hash,
+    })
+    if (!error) {
+      return NextResponse.redirect(`${origin}${next}`)
+    }
+  }
+
+  return NextResponse.redirect(`${origin}/login?error=invalid_link`)
 }

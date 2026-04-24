@@ -15,23 +15,26 @@ export default function ForgotPasswordPage() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
-  const handleResetPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage("");
+const handleResetPassword = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setLoading(true);
+  setMessage("");
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      // Đường link hệ thống sẽ dẫn người dùng tới sau khi họ bấm vào Email
-      redirectTo: 'kanban-kappa-sandy.vercel.app/auth/callback?next=/update-password'
-    });
+  // Lấy domain hiện tại (vídụ: http://localhost:3000 hoặc https://domain.com)
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
 
-    if (error) {
-      setMessage(`Lỗi: ${error.message}`);
-    } else {
-      setMessage("Vui lòng kiểm tra hòm thư Email của bạn để nhận liên kết khôi phục!");
-    }
-    setLoading(false);
-  };
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    // Kết hợp đường dẫn một cách linh hoạt
+    redirectTo: `${baseUrl}/auth/callback?next=/update-password`
+  });
+
+  if (error) {
+    setMessage(`Lỗi: ${error.message}`);
+  } else {
+    setMessage("Vui lòng kiểm tra hòm thư Email của bạn để nhận liên kết khôi phục!");
+  }
+  setLoading(false);
+};
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-900">
