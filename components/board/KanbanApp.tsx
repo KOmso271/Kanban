@@ -1083,7 +1083,7 @@ const createNotification = async (userId: string, type: string, metadata: any, b
               </div>
 
               <div className="flex items-center gap-2">
-                <select value={filterAssigneeId} onChange={(e) => setFilterAssigneeId(e.target.value)} className="text-[13px] font-medium bg-white dark:bg-[#1C1F26] border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 outline-none text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50 transition-all shadow-sm cursor-pointer">
+                <select value={filterAssigneeId} onChange={(e) => setFilterAssigneeId(e.target.value)} className="text-[13px] font-medium bg-white dark:bg-[#1C1F26] border border-slate-200 dark:border-slate-700 rounded-lg px-3 pr-4 py-2 outline-none text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50 transition-all shadow-sm cursor-pointer">
                   <option value="all">{t.allMembers}</option>
                   {activeBoardMembers.map((m: any) => <option key={m.id} value={m.id}>{m.name}</option>)}
                 </select>

@@ -9,7 +9,7 @@ export default function ForgotPasswordPage() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Khởi tạo Supabase (Nên dùng file helper của em thay vì khởi tạo trực tiếp ở đây)
+  // Khởi tạo Supabase 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -22,7 +22,7 @@ export default function ForgotPasswordPage() {
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       // Đường link hệ thống sẽ dẫn người dùng tới sau khi họ bấm vào Email
-      redirectTo: `${window.location.origin}/update-password`, 
+      redirectTo: 'http://localhost:3000/auth/callback?next=/update-password'
     });
 
     if (error) {
