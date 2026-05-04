@@ -321,27 +321,27 @@ export default function HomeDashboard({
 
         {!isLoadingStats && boards.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div onClick={() => alerts.overdue > 0 && setActiveModal("overdue")} className={`bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 p-4 rounded-xl flex items-center gap-4 group transition-all duration-200 ${alerts.overdue > 0 ? 'cursor-pointer hover:border-red-300 dark:hover:border-red-700 hover:shadow-sm hover:-translate-y-0.5' : ''}`}>
+            <div onClick={() => alerts.overdue > 0 && setActiveModal("overdue")} className={`bg-red-300 dark:bg-red-800/50 border border-red-500 dark:border-red-900/30 p-4 rounded-xl flex items-center gap-4 group transition-all duration-200 ${alerts.overdue > 0 ? 'cursor-pointer hover:border-red-300 dark:hover:border-red-700 hover:shadow-sm hover:-translate-y-0.5' : ''}`}>
               <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-red-600 dark:text-red-400 group-hover:scale-110 transition-transform"><AlertTriangle size={20} /></div>
               <div className="flex-1 min-w-0">
                 <p className="text-[12px] font-semibold text-red-600/80 dark:text-red-400/80 uppercase tracking-wider mb-0.5">{t.overdue}</p>
-                <p className="text-xl font-bold text-red-700 dark:text-red-400 leading-none">{alerts.overdue} <span className="text-[13px] font-medium text-red-500/70">{t.tasksWord}</span></p>
+                <p className="text-xl font-bold text-red-900 dark:text-red-400 leading-none">{alerts.overdue} <span className="text-[13px] font-medium text-red-500/70">{t.tasksWord}</span></p>
               </div>
             </div>
 
-            <div onClick={() => alerts.dueThisWeek > 0 && setActiveModal("dueThisWeek")} className={`bg-orange-50 dark:bg-orange-900/10 border border-orange-100 dark:border-orange-900/30 p-4 rounded-xl flex items-center gap-4 group transition-all duration-200 ${alerts.dueThisWeek > 0 ? 'cursor-pointer hover:border-orange-300 dark:hover:border-orange-700 hover:shadow-sm hover:-translate-y-0.5' : ''}`}>
+            <div onClick={() => alerts.dueThisWeek > 0 && setActiveModal("dueThisWeek")} className={`bg-orange-300 dark:bg-orange-800/50 border border-orange-500 dark:border-orange-900/30 p-4 rounded-xl flex items-center gap-4 group transition-all duration-200 ${alerts.dueThisWeek > 0 ? 'cursor-pointer hover:border-orange-300 dark:hover:border-orange-700 hover:shadow-sm hover:-translate-y-0.5' : ''}`}>
               <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-orange-600 dark:text-orange-400 group-hover:scale-110 transition-transform"><CalendarClock size={20} /></div>
               <div className="flex-1 min-w-0">
                 <p className="text-[12px] font-semibold text-orange-600/80 dark:text-orange-400/80 uppercase tracking-wider mb-0.5">{t.dueThisWeek}</p>
-                <p className="text-xl font-bold text-orange-700 dark:text-orange-400 leading-none">{alerts.dueThisWeek} <span className="text-[13px] font-medium text-orange-500/70">{t.tasksWord}</span></p>
+                <p className="text-xl font-bold text-orange-900 dark:text-orange-400 leading-none">{alerts.dueThisWeek} <span className="text-[13px] font-medium text-orange-500/70">{t.tasksWord}</span></p>
               </div>
             </div>
 
-            <div onClick={() => alerts.unassigned > 0 && setActiveModal("unassigned")} className={`bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 p-4 rounded-xl flex items-center gap-4 group transition-all duration-200 ${alerts.unassigned > 0 ? 'cursor-pointer hover:border-slate-400 dark:hover:border-slate-600 hover:shadow-sm hover:-translate-y-0.5' : ''}`}>
-              <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-400 group-hover:scale-110 transition-transform"><UserPlus size={20} /></div>
+            <div onClick={() => alerts.unassigned > 0 && setActiveModal("unassigned")} className={`bg-violet-300 dark:bg-violet-800/50 border border-violet-500 dark:border-violet-700 p-4 rounded-xl flex items-center gap-4 group transition-all duration-200 ${alerts.unassigned > 0 ? 'cursor-pointer hover:border-violet-400 dark:hover:border-violet-600 hover:shadow-sm hover:-violet-y-0.5' : ''}`}>
+              <div className="w-10 h-10 rounded-full bg-violet-200 dark:bg-violet-700 flex items-center justify-center text-violet-500 dark:text-violet-400 group-hover:scale-110 transition-transform"><UserPlus size={20} /></div>
               <div className="flex-1 min-w-0">
-                <p className="text-[12px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-0.5">{t.unassigned}</p>
-                <p className="text-xl font-bold text-slate-700 dark:text-slate-300 leading-none">{alerts.unassigned} <span className="text-[13px] font-medium text-slate-500/70">{t.tasksWord}</span></p>
+                <p className="text-[12px] font-semibold text-violet-900 dark:text-violet-400 uppercase tracking-wider mb-0.5">{t.unassigned}</p>
+                <p className="text-xl font-bold text-violet-700 dark:text-violet-300 leading-none">{alerts.unassigned} <span className="text-[13px] font-medium text-violet-500/70">{t.tasksWord}</span></p>
               </div>
             </div>
           </div>

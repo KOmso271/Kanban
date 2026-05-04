@@ -75,6 +75,8 @@ export default function KanbanApp({ session }: { session: any }) {
   const [isMembersModalOpen, setIsMembersModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isAddingBoard, setIsAddingBoard] = useState(false);
+  // 👇 STATE QUẢN LÝ TASK CẦN XÓA (GLOBAL MODAL) 👇
+  const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
 
   // --- COLUMN CREATION STATES ---
   const [isAddingColumn, setIsAddingColumn] = useState(false);
@@ -438,16 +440,17 @@ export default function KanbanApp({ session }: { session: any }) {
     await supabase.from("notifications").update({ is_read: true }).eq("user_id", currentUser.id);
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
   };
-const createNotification = async (userId: string, type: string, metadata: any, boardId?: string | null, taskId?: string | null) => {
-  if (userId === currentUser.id) return;
-  const contentJSON = JSON.stringify({ type, ...metadata });
-  await supabase.from("notifications").insert([{
-    user_id: userId,
-    content: contentJSON, // <--- Lưu cục JSON này
-    board_id: boardId || null,
-    task_id: taskId || null
-  }]);
-};
+
+  const createNotification = async (userId: string, type: string, metadata: any, boardId?: string | null, taskId?: string | null) => {
+    if (userId === currentUser.id) return;
+    const contentJSON = JSON.stringify({ type, ...metadata });
+    await supabase.from("notifications").insert([{
+      user_id: userId,
+      content: contentJSON, 
+      board_id: boardId || null,
+      task_id: taskId || null
+    }]);
+  };
 
   const handleAddBoard = async (name: string, priority: string) => {
     try {
@@ -473,9 +476,9 @@ const createNotification = async (userId: string, type: string, metadata: any, b
       toast.success("Đã thêm thành viên!");
       setSearchMemberQuery("");
       createNotification(userId, "noti_add_board", { 
-  actor: myProfile?.name || 'Ai đó', 
-  board: boards.find(b => b.id === activeBoardId)?.name 
-}, activeBoardId);
+        actor: myProfile?.name || 'Ai đó', 
+        board: boards.find(b => b.id === activeBoardId)?.name 
+      }, activeBoardId);
     } else { toast.error("Lỗi khi thêm thành viên!"); }
   };
 
@@ -724,7 +727,6 @@ const createNotification = async (userId: string, type: string, metadata: any, b
         } 
       });
       
-      // 👇 SỬA ĐOẠN GỬI THÔNG BÁO MENTION (@) 👇
       mentionedUserIds.forEach(userId => { 
         if (userId !== currentUser.id) { 
           createNotification(
@@ -739,7 +741,6 @@ const createNotification = async (userId: string, type: string, metadata: any, b
       
       const notifyIds = selectedTask.assignee_ids ? (Array.isArray(selectedTask.assignee_ids) ? selectedTask.assignee_ids : [selectedTask.assignee_ids]) : [];
       
-      // 👇 SỬA ĐOẠN GỬI THÔNG BÁO BÌNH LUẬN BÌNH THƯỜNG 👇
       notifyIds.forEach((userId: string) => { 
         if (userId !== currentUser.id && !mentionedUserIds.has(userId)) { 
           createNotification(
@@ -821,14 +822,24 @@ const createNotification = async (userId: string, type: string, metadata: any, b
     else { toast.error("Lỗi khi tạo công việc!"); }
   };
 
-  const deleteTask = async (id: string) => {
+  // 👇 HÀM XỬ LÝ XÓA TASK ĐƯỢC CHUYỂN LÊN ĐÂY 👇
+  const requestDeleteTask = (id: string) => {
     if (!isManager) { toast.error("Chỉ Quản trị viên mới được phép xóa công việc này!"); return; }
-    if (confirm("Bạn có chắc chắn muốn xóa công việc này?")) {
-      const { error } = await supabase.from("tasks").delete().eq("id", id);
-      if (!error) { setTasks(prev => prev.filter(t => t.id !== id)); toast.success("Đã xóa công việc!"); } 
-      else { toast.error("Lỗi khi xóa công việc!"); }
-    }
+    setTaskToDelete(id); 
   };
+
+  const confirmDeleteTask = async () => {
+    if (!taskToDelete) return;
+    const { error } = await supabase.from("tasks").delete().eq("id", taskToDelete);
+    if (!error) { 
+      setTasks(prev => prev.filter(t => t.id !== taskToDelete)); 
+      toast.success("Đã xóa công việc!"); 
+    } else { 
+      toast.error("Lỗi khi xóa công việc!"); 
+    }
+    setTaskToDelete(null); 
+  };
+  // 👆 KẾT THÚC HÀM XỬ LÝ XÓA TASK 👆
 
   const handleQuickComplete = async (taskId: string) => {
     let targetColumn = columns.find(c => {
@@ -968,7 +979,7 @@ const createNotification = async (userId: string, type: string, metadata: any, b
         taskComments={taskComments} newCommentContent={newCommentContent} setNewCommentContent={setNewCommentContent} handleSendComment={handleSendComment} isAddingComment={isAddingComment} myProfile={myProfile} currentUser={currentUser}
         taskAttachments={taskAttachments} isUploading={isUploading} handleFileUpload={handleFileUpload} handleDeleteAttachment={handleDeleteAttachment}
         editTaskPriority={editTaskPriority} setEditTaskPriority={setEditTaskPriority}
-        lang={lang} // <--- TRUYỀN NGÔN NGỮ XUỐNG MODAL (Sẽ sửa sau)
+        lang={lang} 
       />
 
       <MembersModal
@@ -979,7 +990,29 @@ const createNotification = async (userId: string, type: string, metadata: any, b
       />
       <ProfileModal isOpen={isProfileModalOpen} onClose={() => setIsProfileModalOpen(false)} myProfile={myProfile} onProfileUpdate={handleProfileUpdate} />
 
-      {/* ĐÃ TRUYỀN NGÔN NGỮ VÀO SIDEBAR */}
+      {/* ========================================== */}
+      {/* GLOBAL MODAL: XÓA TASK */}
+      {/* ========================================== */}
+      {taskToDelete && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm transition-opacity" onClick={() => setTaskToDelete(null)}>
+          <div className="w-full max-w-sm transform rounded-xl bg-white p-6 shadow-2xl transition-all dark:bg-slate-800 dark:border dark:border-slate-700" onClick={(e) => e.stopPropagation()}>
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
+              <svg className="h-6 w-6 text-red-600 dark:text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+            </div>
+            <h3 className="mb-2 text-center text-lg font-bold text-slate-900 dark:text-white">{t?.deleteTaskTitle || "Xóa công việc"}</h3>
+            <p className="mb-6 text-center text-[14px] text-slate-500 dark:text-slate-400">{t?.confirmDeleteTask || "Bạn có chắc chắn muốn xóa công việc này không? Hành động này không thể hoàn tác."}</p>
+            <div className="flex space-x-3">
+              <button type="button" onClick={() => setTaskToDelete(null)} className="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-[14px] font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 transition-colors">{
+                t?.cancelDeleteTask || "Hủy"
+              }</button>
+              <button type="button" onClick={confirmDeleteTask} className="flex-1 rounded-lg bg-red-600 px-4 py-2.5 text-[14px] font-semibold text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors">{
+                t?.confirmDeleteTaskBtn || "Xóa ngay"
+            }</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Sidebar
         isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} currentView={currentView} navigateToHome={() => router.push("/")}
         boards={boards} activeBoardId={activeBoardId} navigateToBoard={(id: string) => { router.push(`/?board=${id}`); setIsSidebarOpen(false); setAutoOpenTaskId(null); }}
@@ -988,7 +1021,7 @@ const createNotification = async (userId: string, type: string, metadata: any, b
         lang={lang} toggleLanguage={toggleLanguage}
       />
 
-      <main className="flex-1 flex flex-col min-w-0 transition-all duration-500 bg-slate-50 dark:bg-[#0E1116]">
+      <main className="flex-1 flex flex-col min-w-0 transition-all duration-500 bg-slate-100 dark:bg-[#0E1116]">
         {currentView === "home" ? (
           <HomeDashboard
             boards={boards} boardStats={boardStats} allBoardMembers={allBoardMembers} allUsers={allUsers} currentUser={currentUser}
@@ -998,10 +1031,8 @@ const createNotification = async (userId: string, type: string, metadata: any, b
           />
         ) : (
           <>
-            {/* ========================================== */}
-            {/* KANBAN HEADER (ĐÃ SỬ DỤNG BIẾN {t...}) */}
-            {/* ========================================== */}
-            <header className="h-14 flex-shrink-0 border-b flex items-center justify-between px-6 bg-white dark:bg-[#0E1116] dark:border-slate-800">
+          {/* Board Header */}
+            <header className="h-14 flex-shrink-0 border-b-2 border-b-slate-400 flex items-center justify-between px-6 bg-white dark:bg-[#0E1116] dark:border-slate-800">
               <div className="flex items-center gap-3">
                 <button onClick={() => setIsSidebarOpen(true)} className="md:hidden p-1.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12h18M3 6h18M3 18h18" /></svg></button>
                 <div className="flex flex-col">
@@ -1044,9 +1075,6 @@ const createNotification = async (userId: string, type: string, metadata: any, b
               </div>
             </header>
 
-            {/* ========================================== */}
-            {/* TOOLBAR (TÌM KIẾM / LỌC) */}
-            {/* ========================================== */}
             <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800/50 flex flex-wrap items-center gap-3 flex-shrink-0">
               <div className="relative flex-1 min-w-[220px] max-w-[320px] z-50 group">
                 <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
@@ -1115,9 +1143,6 @@ const createNotification = async (userId: string, type: string, metadata: any, b
               </div>
             </div>
 
-            {/* ========================================== */}
-            {/* KANBAN BOARD AREA */}
-            {/* ========================================== */}
             <DndContext sensors={sensors} collisionDetection={customCollisionDetection} onDragStart={onDragStart} onDragEnd={onDragEnd}>
               {taskViewMode === "board" ? (
                 <div className="flex flex-1 gap-6 overflow-x-auto pb-4 hide-scrollbar snap-x items-start p-6">
@@ -1128,7 +1153,7 @@ const createNotification = async (userId: string, type: string, metadata: any, b
                       const isDoneCol = safeTitle.includes("done") || safeTitle.includes("hoàn thành") || safeTitle.includes("xong") || safeTitle.includes("complete");
 
                       return (
-                        <SortableColumn key={col.id} col={col} tasks={colTasks} activeBoardMembers={activeBoardMembers} boardLabels={boardLabels} taskLabels={taskLabels} deleteColumn={deleteColumn} editColumn={editColumn} deleteTask={deleteTask} onTaskClick={handleTaskClick} onQuickComplete={handleQuickComplete} onAddTask={handleAddTask} isLastColumn={isDoneCol} isManager={isManager} lang={lang} />
+                        <SortableColumn key={col.id} col={col} tasks={colTasks} activeBoardMembers={activeBoardMembers} boardLabels={boardLabels} taskLabels={taskLabels} deleteColumn={deleteColumn} editColumn={editColumn} deleteTask={requestDeleteTask} onTaskClick={handleTaskClick} onQuickComplete={handleQuickComplete} onAddTask={handleAddTask} isLastColumn={isDoneCol} isManager={isManager} lang={lang} />
                       );
                     })}
                   </SortableContext>

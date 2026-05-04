@@ -134,7 +134,7 @@ export default function Sidebar({
 
           return (
             <div key={board.id} className="group flex items-center relative">
-              <button onClick={() => navigateToBoard(board.id)} className={`flex-1 text-left px-2 py-1.5 rounded-md text-[13px] truncate transition-colors flex items-center gap-2 pr-8 ${isActive ? "bg-slate-200/60 dark:bg-slate-800/60 font-medium text-slate-900 dark:text-white" : "text-slate-600 dark:text-slate-400 hover:bg-slate-200/40 dark:hover:bg-slate-800/40"}`}>
+              <button onClick={() => navigateToBoard(board.id)} className={`flex-1 text-left px-2 py-1.5 rounded-md text-[13px] truncate transition-colors flex items-center gap-2 pr-8 ${isActive ? "bg-blue-200/60 dark:bg-emerald-900 font-medium text-slate-900 dark:text-white" : "text-slate-600 dark:text-slate-400 hover:bg-slate-200/40 dark:hover:bg-slate-800/40"}`}>
                 <span className={`rounded-full transition-all ${pConfig.dotClass} ${isActive ? "w-2 h-2" : "w-2.5 h-2.5"}`}></span>{board.name}
               </button>
               <div className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity group/menu z-10">

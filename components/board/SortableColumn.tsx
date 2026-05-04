@@ -63,7 +63,7 @@ function SortableColumn({
     <div
       ref={setNodeRef}
       style={style}
-      className={`w-[260px] md:w-[280px] flex-shrink-0 flex flex-col bg-slate-50 dark:bg-[#15171C] rounded-xl border ${isDragging ? "border-blue-500 opacity-40 shadow-2xl" : "border-slate-200 dark:border-slate-800"}`}
+      className={`w-[260px] md:w-[280px] flex-shrink-0 flex flex-col bg-slate-50 dark:bg-[#15171C] rounded-xl border-1 ${isDragging ? "border-blue-500 opacity-40 shadow-2xl" : "border-slate-300 dark:border-slate-800"}`}
     >
       {/* HEADER CỦA CỘT */}
       <div {...attributes} {...listeners} className="p-3 flex items-center justify-between border-b border-slate-200/50 dark:border-slate-800/50 cursor-grab active:cursor-grabbing group">

@@ -68,6 +68,8 @@ export const translations = {
     defaultLabel: "Nhãn",
     and: "và",
     others: "người khác",
+    cancelDeleteTask: "Hủy xóa",
+    confirmDeleteTaskBtn: "Xóa ngay",
 
     // --- THÔNG BÁO (NOTIFICATIONS) ---
     notificationsTitle: "Thông báo",
@@ -242,6 +244,9 @@ export const translations = {
     defaultLabel: "Label",
     and: "and",
     others: "others",
+    deleteTaskBtn: "Delete now",
+    cancelDeleteTask: "Cancel",
+    confirmDeleteTaskBtn: "Delete",
 
     // --- THÔNG BÁO (NOTIFICATIONS) ---
     notificationsTitle: "Notifications",

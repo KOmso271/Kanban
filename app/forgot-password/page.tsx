@@ -25,7 +25,7 @@ const handleResetPassword = async (e: React.FormEvent) => {
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     // Kết hợp đường dẫn một cách linh hoạt
-    redirectTo: `${baseUrl}/auth/callback?next=/update-password`
+    redirectTo: 'https://kanban-kappa-sandy.vercel.app/auth/callback?next=/update-password'
   });
 
   if (error) {

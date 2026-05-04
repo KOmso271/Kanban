@@ -4,7 +4,7 @@ import React, { memo } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { priorityConfig } from "@/lib/constants";
-import { translatePriority, translations } from "@/lib/translations"; 
+import { translatePriority, translations } from "@/lib/translations";
 
 // HÀM FORMAT NGÀY THÁNG AN TOÀN
 const formatDateVN = (dateString: string | null) => {
@@ -13,7 +13,7 @@ const formatDateVN = (dateString: string | null) => {
     const [year, month, day] = dateString.split('-');
     return `${day}/${month}/${year}`;
   }
-  return dateString; 
+  return dateString;
 };
 
 // THUẬT TOÁN TÍNH TOÁN CẢNH BÁO HẠN CHÓT
@@ -49,11 +49,10 @@ function TaskCard({
   onQuickComplete,
   deleteTask,
   isDoneColumn,
-  isManager, // 👇 NHẬN isManager ĐỂ GIẤU NÚT XÓA
-  lang       // 👇 NHẬN BIẾN NGÔN NGỮ
+  isManager, 
+  lang       
 }: any) {
   
-  // KÍCH HOẠT TỪ ĐIỂN
   const t = translations[lang as keyof typeof translations] || translations["vi"];
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -82,11 +81,10 @@ function TaskCard({
     if (onQuickComplete) onQuickComplete(task.id);
   };
 
+  // HÀM XÓA TASK: Đã gọi thẳng lên props `deleteTask` (là requestDeleteTask của KanbanApp)
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm(t.confirmDeleteTask)) {
-      if (deleteTask) deleteTask(task.id);
-    }
+    if (deleteTask) deleteTask(task.id); 
   };
 
   return (
@@ -110,7 +108,6 @@ function TaskCard({
           </button>
         )}
         
-        {/* 👇 CHỐT CHẶN: CHỈ MANAGER MỚI THẤY NÚT XÓA 👇 */}
         {isManager && (
           <button
             onClick={handleDeleteClick}
