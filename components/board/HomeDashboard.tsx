@@ -368,7 +368,7 @@ export default function HomeDashboard({
                       {workloadData.length === 0 ? (
                         <p className="text-slate-400 italic flex h-full items-center justify-center">{t.noActiveTasks}</p>
                       ) : (
-                        <ResponsiveContainer width="100%"minHeight={240}>
+                        <ResponsiveContainer width="100%" height={240}>
                           <BarChart data={workloadData} margin={{ top: 0, right: 0, left: -25, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.2} />
                             <XAxis dataKey="name" tick={{ fill: '#64748b' }} axisLine={false} tickLine={false} />
@@ -391,7 +391,7 @@ export default function HomeDashboard({
                     {pieChartTitle}
                   </h3>
                   <div className="flex-1 min-h-[200px] w-full relative">
-                    <ResponsiveContainer width="100%" minHeight={240}>
+                    <ResponsiveContainer width="100%" height={240}>
                       <PieChart>
                         <Pie data={taskStatusData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={4} dataKey="value" stroke="none">
                           {taskStatusData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}

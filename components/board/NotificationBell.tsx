@@ -34,23 +34,45 @@ export default function NotificationBell({
   };
 
   // 👇 HÀM "GIẢI MÃ" VÀ DỊCH THÔNG BÁO TỰ ĐỘNG 👇
-  const renderNotificationContent = (content: string) => {
+// 👇 HÀM "GIẢI MÃ" PHIÊN BẢN BỌC THÉP 👇
+  const renderNotificationContent = (content: any) => {
     try {
-      // Thử dịch từ JSON sang Object
-      const data = JSON.parse(content);
-      
-      // Lấy mẫu câu từ từ điển (vd: "{actor} đã bình luận...")
-      let template = t[data.type as keyof typeof t] || content;
+      // 1. Chuyển chuỗi JSON thành Object (Nếu nó đang là chuỗi)
+      let data = typeof content === 'string' ? JSON.parse(content) : content;
 
-      // Nhét dữ liệu vào các chỗ trống
-      if (data.actor) template = template.replace("{actor}", data.actor);
-      if (data.task) template = template.replace("{task}", data.task);
-      if (data.board) template = template.replace("{board}", data.board);
+      // Xử lý trường hợp bị stringify 2 lớp (lưu chồng JSON)
+      if (typeof data === 'string') data = JSON.parse(data);
 
-      return template;
+      // 2. Nếu là Object chuẩn và có chứa biến "type"
+      if (data && typeof data === 'object' && data.type) {
+        
+        // Cố gắng tìm câu mẫu trong từ điển t (translations.ts)
+        let template = t[data.type as keyof typeof t];
+
+        // 🛡️ CHỐT CHẶN AN TOÀN: Nếu quên khai báo trong từ điển, tự tạo câu dịch!
+        if (!template) {
+          if (data.type === "noti_assign_task") template = "{actor} đã giao cho bạn công việc: {task}";
+          else if (data.type === "noti_add_board") template = "{actor} đã mời bạn vào dự án {board}";
+          else if (data.type === "noti_comment") template = "{actor} đã bình luận trong: {task}";
+          else if (data.type === "noti_mention") template = "{actor} đã nhắc đến bạn trong: {task}";
+          else template = data.type; // Nếu không có tên nào khớp thì in chữ type ra
+        }
+
+        // 3. Tiến hành ghép tên (Linh, Nghiêm, tên Task...) vào câu mẫu
+        if (typeof template === 'string') {
+          if (data.actor) template = template.replace(/{actor}/g, data.actor);
+          if (data.task) template = template.replace(/{task}/g, data.task);
+          if (data.board) template = template.replace(/{board}/g, data.board);
+        }
+
+        return template;
+      }
+
+      // Nếu không phải dạng JSON mình quy định, in thẳng chuỗi gốc
+      return typeof content === 'string' ? content : "Có thông báo mới";
     } catch (e) {
-      // Nếu bị lỗi (tức là thông báo cũ lưu kiểu text bình thường), thì cứ in ra như cũ
-      return content;
+      // Nếu lỗi Parse JSON (tức là text thường), cứ in thẳng ra
+      return typeof content === 'string' ? content : "Có thông báo mới";
     }
   };
 

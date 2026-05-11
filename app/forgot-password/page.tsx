@@ -2,39 +2,34 @@
 
 import { useState } from "react";
 // Lưu ý: Thay đổi đường dẫn import supabase này cho đúng với file config của dự án em
-import { createClient } from "@supabase/supabase-js"; 
+import { supabase } from "@/lib/supabase";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Khởi tạo Supabase 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
 
 const handleResetPassword = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setLoading(true);
-  setMessage("");
+    e.preventDefault();
+    setLoading(true);
+    setMessage("");
 
-  // Lấy domain hiện tại (vídụ: http://localhost:3000 hoặc https://domain.com)
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+    // Lấy domain hiện tại (sẽ tự động chạy đúng dù ở localhost hay Vercel)
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
 
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    // Kết hợp đường dẫn một cách linh hoạt
-    redirectTo: 'https://kanban-kappa-sandy.vercel.app/auth/callback?next=/update-password'
-  });
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      // 👇 SỬA Ở ĐÂY: Trỏ thẳng về trang Update Password
+      redirectTo: `${window.location.origin}/update-password`
+    });
 
-  if (error) {
-    setMessage(`Lỗi: ${error.message}`);
-  } else {
-    setMessage("Vui lòng kiểm tra hòm thư Email của bạn để nhận liên kết khôi phục!");
-  }
-  setLoading(false);
-};
+    if (error) {
+      setMessage(`Lỗi: ${error.message}`);
+    } else {
+      setMessage("Vui lòng kiểm tra hòm thư Email của bạn để nhận liên kết khôi phục!");
+    }
+    setLoading(false);
+  };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-900">

@@ -77,6 +77,10 @@ export default function KanbanApp({ session }: { session: any }) {
   const [isAddingBoard, setIsAddingBoard] = useState(false);
   // 👇 STATE QUẢN LÝ TASK CẦN XÓA (GLOBAL MODAL) 👇
   const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
+  // 👇 STATE QUẢN LÝ NGƯỜI CẦN XÓA 👇
+  const [memberToRemove, setMemberToRemove] = useState<string | null>(null);
+  // 👇 STATE QUẢN LÝ NGƯỜI ĐƯỢC NHẬN QUYỀN SUPER ADMIN 👇
+  const [transferAdminId, setTransferAdminId] = useState<string | null>(null);
 
   // --- COLUMN CREATION STATES ---
   const [isAddingColumn, setIsAddingColumn] = useState(false);
@@ -198,6 +202,51 @@ export default function KanbanApp({ session }: { session: any }) {
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) toast.error("Lỗi đăng xuất!");
+  };
+  // ==========================================
+  // HÀM CHUYỂN GIAO QUYỀN SUPER ADMIN
+  // ==========================================
+// ==========================================
+  // 1. HÀM YÊU CẦU CHUYỂN QUYỀN (Hiện Popup)
+  // ==========================================
+  const handleTransferSuperAdmin = (newAdminId: string) => {
+    if (!isSuperAdmin) {
+      toast.error("Chỉ Super Admin hiện tại mới có thể chuyển giao quyền!");
+      return;
+    }
+    // Không dùng confirm() nữa, mà bật State để hiện Custom Modal
+    setTransferAdminId(newAdminId);
+  };
+
+  // ==========================================
+  // 2. HÀM THỰC THI CHUYỂN QUYỀN (Khi bấm OK trong Popup)
+  // ==========================================
+  const executeTransferSuperAdmin = async () => {
+    if (!transferAdminId) return;
+
+    try {
+      const { error } = await supabase
+        .from('company_settings')
+        .update({ super_admin_id: transferAdminId })
+        .eq('super_admin_id', currentUser.id);
+
+      if (error) throw error;
+
+      toast.success("👑 Đã chuyển giao quyền lực thành công! Đang tải lại hệ thống...", { icon: '👑', duration: 4000 });
+      
+      // Dọn dẹp UI
+      setTransferAdminId(null);
+      setIsProfileModalOpen(false);
+      
+      // F5 tải lại trang để tước quyền ngay lập tức
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+
+    } catch (err: any) {
+      toast.error(`Lỗi chuyển quyền: ${err.message}`);
+      setTransferAdminId(null);
+    }
   };
 
   const handleToggleDarkMode = () => {
@@ -338,9 +387,15 @@ export default function KanbanApp({ session }: { session: any }) {
             }
           } else if (payload.eventType === 'DELETE') {
             toast.error("Bạn đã bị gỡ khỏi một dự án.");
+            const urlParams = new URLSearchParams(window.location.search);
+            const currentBoardInUrl = urlParams.get("board");
+            if (currentBoardInUrl === payload.old.board_id) {
+               window.location.href = "/";
+          }
           }
         }
       )
+    
       .subscribe();
     return () => { supabase.removeChannel(memberChannel); };
   }, [currentUser.id]);
@@ -453,6 +508,14 @@ export default function KanbanApp({ session }: { session: any }) {
   };
 
   const handleAddBoard = async (name: string, priority: string) => {
+    const isDuplicate = boards.some(
+      (b) => b.name.trim().toLowerCase() === name.trim().toLowerCase()
+    );
+
+    if (isDuplicate) {
+      toast.error("Tên dự án đã tồn tại! Vui lòng chọn tên khác.");
+      return; // Dừng lại luôn, không chạy xuống dưới nữa
+    }
     try {
       const { data: newBoard, error } = await supabase.from("boards").insert([{ name, priority, user_id: currentUser.id }]).select().single();
       if (error) { toast.error(`Lỗi Database: ${error.message}`); return; }
@@ -482,20 +545,45 @@ export default function KanbanApp({ session }: { session: any }) {
     } else { toast.error("Lỗi khi thêm thành viên!"); }
   };
 
-  const handleRemoveMember = async (userId: string) => {
+// 1. HÀM YÊU CẦU XÓA (Kiểm tra quyền và Hiện Modal)
+  const handleRemoveMember = (userId: string) => {
     const currentBoard = boards.find(b => b.id === activeBoardId);
-    if (currentBoard && userId === currentBoard.user_id && currentUser.id !== currentBoard.user_id) { toast.error("Hỗn xược! Bạn không có quyền xóa Chủ dự án!"); return; }
+    const targetUser = activeBoardMembers.find((m: any) => m.id === userId);
+    const targetRole = targetUser?.role?.toLowerCase() || "";
+    const isTargetManager = targetRole === "admin" || targetRole === "quản lý" || targetRole === "manager";
+    const isMeOwner = currentBoard?.user_id === currentUser.id;
+
+    // Chặn xóa Chủ dự án
+    if (currentBoard && userId === currentBoard.user_id && currentUser.id !== currentBoard.user_id) { 
+      if (!isSuperAdmin) { toast.error("Hỗn xược! Bạn không có quyền xóa Chủ dự án!"); return; }
+    }
+    // Chặn Quản lý xóa Quản lý khác
+    if (isTargetManager && !isMeOwner && !isSuperAdmin && userId !== currentUser.id) {
+      toast.error("Bạn không đủ thẩm quyền để xóa một Quản lý khác!"); return;
+    }
     if (!activeBoardId) return;
-    if (!isManager) { toast.error("Bạn không được phép tự rời dự án. Vui lòng liên hệ Quản lý!"); return; }
+    if (!isManager) { toast.error("Bạn không có quyền thực hiện thao tác này!"); return; }
+
     const isMe = userId === currentUser.id;
     if (isMe) {
       const adminCount = activeBoardMembers.filter((m: any) => m.role === "admin" || m.role === "Quản lý" || m.role === "manager").length;
       if (adminCount <= 1) { toast.error("Bạn là Quản lý duy nhất! Hãy cấp quyền cho người khác trước khi rời đi, hoặc Xóa luôn dự án này.", { duration: 4000 }); return; }
-      if (!confirm("Bạn có chắc chắn muốn TỰ RỜI KHỎI dự án này?")) return;
-    } else { if (!confirm("Bạn có chắc muốn xóa thành viên này khỏi dự án?")) return; }
+    }
+
+    // THAY VÌ HIỆN CONFIRM CỦA TRÌNH DUYỆT, TA MỞ MODAL
+    setMemberToRemove(userId);
+  };
+
+  // 2. HÀM THỰC THI XÓA (Chạy khi bấm nút Đỏ trong Modal)
+  const executeRemoveMember = async () => {
+    if (!memberToRemove || !activeBoardId) return;
+    const userId = memberToRemove;
+    const isMe = userId === currentUser.id;
 
     const { error } = await supabase.from("board_members").delete().match({ board_id: activeBoardId, user_id: userId });
+    
     if (!error) {
+      // Dọn dẹp Task của người bị xóa
       try {
         const { data: cols } = await supabase.from("columns").select("id").eq("board_id", activeBoardId);
         if (cols && cols.length > 0) {
@@ -514,19 +602,38 @@ export default function KanbanApp({ session }: { session: any }) {
           }
         }
       } catch (cleanupError) {}
+
       setAllBoardMembers(prev => prev.filter(bm => !(bm.board_id === activeBoardId && bm.user_id === userId)));
       toast.success(isMe ? "Bạn đã rời dự án!" : "Đã xóa thành viên!");
+      
       if (isMe) {
         setBoards(prev => prev.filter(b => b.id !== activeBoardId));
-        setActiveBoardId(null); setCurrentView("home"); setIsMembersModalOpen(false);
-      } else { setTimeout(() => { window.location.reload(); }, 800); }
+        setActiveBoardId(null); 
+        setCurrentView("home"); 
+        setIsMembersModalOpen(false);
+        router.push("/"); 
+      } else { 
+        setTimeout(() => { window.location.reload(); }, 800); 
+      }
     } else { toast.error("Lỗi hệ thống khi thao tác!"); }
+
+    // Đóng Modal sau khi xong
+    setMemberToRemove(null);
   };
 
   const handleChangeMemberRole = async (userId: string, selectedRole: string) => {
     const currentBoard = boards.find(b => b.id === activeBoardId);
-    if (currentBoard && userId === currentBoard.user_id) { toast.error("Không thể giáng chức Chủ dự án!"); return; }
+    
+    // 👇 NỚI LỎNG CHO SUPER ADMIN 👇
+    if (currentBoard && userId === currentBoard.user_id) { 
+      if (!isSuperAdmin) {
+        toast.error("Không thể giáng chức Chủ dự án!"); 
+        return; 
+      }
+    }
+    
     if (!activeBoardId || !isManager) return;
+    
     if (userId === currentUser.id && (selectedRole === "member" || selectedRole === "Thành viên")) {
       const adminCount = activeBoardMembers.filter((m: any) => m.role === "admin" || m.role === "Quản lý" || m.role === "manager").length;
       if (adminCount <= 1) { toast.error("Bạn là Quản lý duy nhất!", { duration: 4000 }); return; }
@@ -815,14 +922,22 @@ export default function KanbanApp({ session }: { session: any }) {
     }
   };
 
-  const handleAddTask = async (columnId: string, content: string) => {
+const handleAddTask = async (columnId: string, content: string) => {
     const columnTasks = tasks.filter(t => t.column_id === columnId);
     const { data, error } = await supabase.from("tasks").insert([{ content, column_id: columnId, order: columnTasks.length + 1, user_id: currentUser.id }]).select().single();
-    if (data) { setTasks(prev => [...prev, data]); } 
-    else { toast.error("Lỗi khi tạo công việc!"); }
+    
+    if (data) { 
+      setTasks(prev => {
+        const isExist = prev.some(t => t.id === data.id);
+        if (isExist) return prev; 
+        return [...prev, data];   
+      }); 
+    } 
+    else { 
+      toast.error("Lỗi khi tạo công việc!"); 
+    }
   };
 
-  // 👇 HÀM XỬ LÝ XÓA TASK ĐƯỢC CHUYỂN LÊN ĐÂY 👇
   const requestDeleteTask = (id: string) => {
     if (!isManager) { toast.error("Chỉ Quản trị viên mới được phép xóa công việc này!"); return; }
     setTaskToDelete(id); 
@@ -839,7 +954,6 @@ export default function KanbanApp({ session }: { session: any }) {
     }
     setTaskToDelete(null); 
   };
-  // 👆 KẾT THÚC HÀM XỬ LÝ XÓA TASK 👆
 
   const handleQuickComplete = async (taskId: string) => {
     let targetColumn = columns.find(c => {
@@ -884,10 +998,22 @@ export default function KanbanApp({ session }: { session: any }) {
       const changeText = changes.join(", ");
       logActivity(selectedTask.id, "update", `đã cập nhật ${changeText}`);
 
-      if (assigneesChanged) {
+if (assigneesChanged) {
         const newlyAdded = newAssignees.filter(id => !oldAssignees.includes(id));
         newlyAdded.forEach((userId) => {
-          if (userId !== currentUser.id) { createNotification(userId, `${myProfile?.name || 'Quản lý'} đã giao cho bạn công việc: ${editTaskContent}`, activeBoardId, selectedTask.id); }
+          if (userId !== currentUser.id) { 
+            // DÙNG CHUẨN FORM TỪ KHÓA VÀ METADATA
+            createNotification(
+              userId, 
+              "noti_assign_task", // <-- Tên từ khóa chuẩn
+              { 
+                actor: myProfile?.name || 'Quản lý', 
+                task: editTaskContent 
+              }, // <-- Dữ liệu Object (metadata)
+              activeBoardId, // <-- board ID
+              selectedTask.id // <-- task ID
+            ); 
+          }
         });
       }
       setShowLabelMenu(false); setSelectedTask(null);
@@ -987,8 +1113,18 @@ export default function KanbanApp({ session }: { session: any }) {
         activeMembers={activeBoardMembers} searchQuery={searchMemberQuery} setSearchQuery={setSearchMemberQuery} searchResults={memberSearchResults}
         onAddMember={handleAddMember} onRemoveMember={handleRemoveMember} currentUser={currentUser} currentUserRole={currentUserRole} onChangeRole={handleChangeMemberRole}
         lang={lang}
+        isManager={isManager} // 👇 TRUYỀN THÊM DÒNG NÀY XUỐNG
       />
-      <ProfileModal isOpen={isProfileModalOpen} onClose={() => setIsProfileModalOpen(false)} myProfile={myProfile} onProfileUpdate={handleProfileUpdate} />
+      <ProfileModal 
+        isOpen={isProfileModalOpen} 
+        onClose={() => setIsProfileModalOpen(false)} 
+        myProfile={myProfile} 
+        onProfileUpdate={handleProfileUpdate} 
+        // 👇 3 THUỘC TÍNH MỚI CHO DANGER ZONE 👇
+        isSuperAdmin={isSuperAdmin}
+        allUsers={allUsers}
+        onTransferSuperAdmin={handleTransferSuperAdmin}
+      />
 
       {/* ========================================== */}
       {/* GLOBAL MODAL: XÓA TASK */}
@@ -1008,6 +1144,61 @@ export default function KanbanApp({ session }: { session: any }) {
               <button type="button" onClick={confirmDeleteTask} className="flex-1 rounded-lg bg-red-600 px-4 py-2.5 text-[14px] font-semibold text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors">{
                 t?.confirmDeleteTaskBtn || "Xóa ngay"
             }</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ========================================== */}
+      {/* GLOBAL MODAL: XÓA THÀNH VIÊN / RỜI DỰ ÁN */}
+      {/* ========================================== */}
+      {memberToRemove && (
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm transition-opacity" onClick={() => setMemberToRemove(null)}>
+          <div className="w-full max-w-sm transform rounded-xl bg-white p-6 shadow-2xl transition-all dark:bg-slate-800 dark:border dark:border-slate-700" onClick={(e) => e.stopPropagation()}>
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
+              <svg className="h-6 w-6 text-red-600 dark:text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+            </div>
+            <h3 className="mb-2 text-center text-lg font-bold text-slate-900 dark:text-white">
+              {memberToRemove === currentUser.id ? "Rời khỏi dự án" : "Xóa thành viên"}
+            </h3>
+            <p className="mb-6 text-center text-[14px] text-slate-500 dark:text-slate-400">
+              {memberToRemove === currentUser.id 
+                ? "Bạn có chắc chắn muốn TỰ RỜI KHỎI dự án này không? Hành động này không thể hoàn tác.":
+                "Bạn có chắc chắn muốn xóa thành viên này khỏi dự án?"
+                }
+            </p>
+            <div className="flex space-x-3">
+              <button type="button" onClick={() => setMemberToRemove(null)} className="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-[14px] font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 transition-colors">
+                Hủy bỏ
+              </button>
+              <button type="button" onClick={executeRemoveMember} className="flex-1 rounded-lg bg-red-600 px-4 py-2.5 text-[14px] font-semibold text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors">
+                Xác nhận
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ========================================== */}
+      {/* GLOBAL MODAL: XÁC NHẬN CHUYỂN QUYỀN SUPER ADMIN */}
+      {/* ========================================== */}
+      {transferAdminId && (
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm transition-opacity" onClick={() => setTransferAdminId(null)}>
+          <div className="w-full max-w-sm transform rounded-xl bg-white p-6 shadow-2xl transition-all dark:bg-slate-800 dark:border dark:border-slate-700" onClick={(e) => e.stopPropagation()}>
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
+              <svg className="h-6 w-6 text-red-600 dark:text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+            </div>
+            <h3 className="mb-2 text-center text-lg font-bold text-slate-900 dark:text-white">
+              Cảnh báo cuối cùng
+            </h3>
+            <p className="mb-6 text-center text-[14px] text-slate-500 dark:text-slate-400">
+              Bạn có CHẮC CHẮN chuyển quyền cho <strong className="text-slate-800 dark:text-slate-200">{allUsers.find(u => u.id === transferAdminId)?.name || "người này"}</strong>? Hành động này không thể hoàn tác.
+            </p>
+            <div className="flex space-x-3">
+              <button type="button" onClick={() => setTransferAdminId(null)} className="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-[14px] font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 transition-colors">
+                Hủy bỏ
+              </button>
+              <button type="button" onClick={executeTransferSuperAdmin} className="flex-1 rounded-lg bg-red-600 px-4 py-2.5 text-[14px] font-semibold text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors">
+                Xác nhận chuyển
+              </button>
             </div>
           </div>
         </div>

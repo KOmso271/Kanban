@@ -31,5 +31,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.redirect(`${origin}/login?error=invalid_link`)
+  return NextResponse.redirect(`${origin}/?error=invalid_link`)
 }

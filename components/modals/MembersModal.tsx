@@ -13,12 +13,13 @@ export default function MembersModal({
   activeMembers,
   currentUser,
   currentUserRole,
-  onChangeRole
+  onChangeRole,
+  isManager // 👇 NHẬN QUYỀN TRỰC TIẾP TỪ KANBAN APP
 }: any) {
   if (!isOpen || !currentBoard) return null;
 
-  // Bắt an toàn cả 2 trường hợp lưu role trong database
-  const isAdmin = currentUserRole === "admin" || currentUserRole === "Quản lý" || currentUserRole === "manager";
+  // 👇 SỬA LẠI: Đồng bộ quyền với KanbanApp (Super Admin sẽ luôn là true)
+  const isAdmin = isManager; 
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 transition-opacity" onClick={onClose}>
@@ -68,13 +69,13 @@ export default function MembersModal({
             ) : (
               activeMembers.map((member: any) => {
                 const isMe = member.id === currentUser.id;
-                // [ĐÃ SỬA] Chỉ Admin/Manager mới được quyền xóa người hoặc tự out. Member bị tước quyền.
+                // Chỉ Admin/Manager/SuperAdmin mới được quyền xóa người hoặc tự out.
                 const canRemove = isAdmin;
 
                 return (
                   <div key={member.id} className="flex items-center gap-3 p-1.5 -mx-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
 
-                    {/* Phần Trái: Avatar và Tên (flex-1 để đẩy phần Role qua sát bên phải) */}
+                    {/* Phần Trái: Avatar và Tên */}
                     <div className="flex-1 min-w-0 flex items-center gap-3">
                       <div className="w-9 h-9 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden flex-shrink-0 shadow-sm border border-slate-200 dark:border-slate-600">
                         <img src={member.avatar_url || `https://api.dicebear.com/7.x/notionists/svg?seed=${member.id}`} alt={member.name} className="w-full h-full object-cover" />
@@ -85,36 +86,32 @@ export default function MembersModal({
                       </div>
                     </div>
 
-                    {/* Phần Phải: Cụm Role và Nút Xóa (Kích thước CỐ ĐỊNH để chống xê dịch) */}
+                    {/* Phần Phải: Cụm Role và Nút Xóa */}
                     <div className="flex items-center gap-1 flex-shrink-0">
 
-                      {/* Cột 1: Box chứa chức vụ (Cố định width là 95px để chứa mũi tên) */}
+                      {/* Cột 1: Box chứa chức vụ */}
                       <div className="w-[95px] flex justify-end relative">
                         {isAdmin ? (
-                          // NẾU LÀ ADMIN -> HIỂN THỊ DROPDOWN CHỌN QUYỀN
                           <div className="relative inline-block w-full">
                             <select
                               value={member.role === "admin" || member.role === "Quản lý" ? "admin" : "member"}
                               onChange={(e) => onChangeRole(member.id, e.target.value)}
-                              className={`appearance-none w-full text-[10px] pl-2.5 pr-5 py-1.5 rounded-md font-medium cursor-pointer transition-all outline-none ${member.role === "admin" || member.role === "Quản lý" ? "bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 border border-blue-200 dark:border-blue-800" : "bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700"}`}
+                              // 👇 Đã xóa 'appearance-none' và chỉnh padding cho gọn
+                              className={`w-full text-[10px] pl-2.5 pr-1 py-1.5 rounded-md font-medium cursor-pointer transition-all outline-none ${member.role === "admin" || member.role === "Quản lý" ? "bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 border border-blue-200 dark:border-blue-800" : "bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700"}`}
                             >
                               <option value="admin" className="text-slate-800 font-medium">Quản lý</option>
                               <option value="member" className="text-slate-800 font-medium">Thành viên</option>
                             </select>
-                            {/* Icon mũi tên thả xuống (đè lên mũi tên mặc định) */}
-                            <div className="pointer-events-none absolute inset-y-0 right-1.5 flex items-center opacity-60">
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                            </div>
+                            {/* SVG icon cũ gây đúp mũi tên đã được xóa */}
                           </div>
                         ) : (
-                          // NẾU LÀ MEMBER -> CHỈ LÀ CHỮ TEXT BÌNH THƯỜNG
                           <span className={`text-[10px] px-2 py-1.5 rounded-md font-medium ${member.role === "admin" || member.role === "Quản lý" ? "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400" : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"}`}>
                             {member.role === "admin" || member.role === "Quản lý" ? "Quản lý" : "Thành viên"}
                           </span>
                         )}
                       </div>
 
-                      {/* Cột 2: Box chứa nút xóa (Cố định width 28px - dù không có nút vẫn giữ khoảng trống) */}
+                      {/* Cột 2: Box chứa nút xóa */}
                       <div className="w-[28px] flex justify-end">
                         {canRemove && (
                           <button
