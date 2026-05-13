@@ -54,6 +54,7 @@ export const translations = {
     addColumn: "Thêm cột mới",
     addList: "Thêm danh sách mới",
     newColumnName: "Nhập tên cột...",
+    calendarView: "Lịch",
 
     // --- BẢNG & CỘT (BOARD & COLUMN) ---
     doubleClickToEdit: "Nhấn đúp để sửa tên",
@@ -230,6 +231,7 @@ export const translations = {
     addColumn: "Add new column",
     addList: "Add new list",
     newColumnName: "Enter column name...",
+    calendarView: "Calendar",
 
     // --- BẢNG & CỘT (BOARD & COLUMN) ---
     doubleClickToEdit: "Double click to edit",
