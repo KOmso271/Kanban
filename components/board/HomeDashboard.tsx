@@ -413,7 +413,7 @@ export default function HomeDashboard({
               </div>
             )}
 
-            <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2 px-1 -mx-1 scrollbar-hide">
+            <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2 pt-2 px-1 -mx-1 scrollbar-hide">
               <button onClick={() => setFilterPriority("all")} className={`text-[12px] font-medium px-4 py-1.5 rounded-full border transition-all flex-shrink-0 ${filterPriority === "all" ? "bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900 border-slate-800 dark:border-slate-200 shadow-sm" : "bg-white text-slate-600 dark:bg-[#1C1F26] dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50"}`}>{t.allFilter}</button>
               {Object.entries(priorityConfig).map(([key, config]: any) => (
                 <button key={key} onClick={() => setFilterPriority(key)} className={`text-[12px] font-medium px-4 py-1.5 rounded-full flex items-center gap-1.5 border transition-all flex-shrink-0 ${filterPriority === key ? `${config.color} shadow-sm border-transparent ring-1 ring-current` : "bg-white text-slate-600 dark:bg-[#1C1F26] dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50"}`}><span className={`w-2 h-2 rounded-full ${config.dotClass}`}></span>{translatePriority(config.label, lang)}</button>

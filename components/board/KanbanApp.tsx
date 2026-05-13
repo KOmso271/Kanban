@@ -264,6 +264,62 @@ export default function KanbanApp({ session }: { session: any }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const boardIdFromUrl = searchParams.get("board");
+  const handleExportFullBackup = async () => {
+    const XLSX = await import("xlsx");
+    toast.loading("Đang chuẩn bị dữ liệu sao lưu...", { id: "backup" });
+
+    try {
+      // 1. Lấy toàn bộ dữ liệu từ Database
+      const { data: allBoards } = await supabase.from("boards").select("*");
+      const { data: allTasks } = await supabase.from("tasks").select("*");
+      const { data: allCols } = await supabase.from("columns").select("*");
+
+      // 2. Chuẩn bị Sheet: Danh sách Dự án
+      const boardsSheetData = allBoards?.map(b => ({
+        "Mã Dự án": b.id,
+        "Tên Dự án": b.name,
+        "Độ ưu tiên": translatePriority(priorityConfig[b.priority || "normal"]?.label, lang),
+        "Ngày tạo": format(new Date(b.created_at), "dd/MM/yyyy")
+      })) || [];
+
+      // 3. Chuẩn bị Sheet: Toàn bộ Công việc (Master Task List)
+      const tasksSheetData = allTasks?.map(t => {
+        const board = allBoards?.find(b => allCols?.find(c => c.id === t.column_id)?.board_id === b.id);
+        const col = allCols?.find(c => c.id === t.column_id);
+        const assignees = (Array.isArray(t.assignee_ids) ? t.assignee_ids : [])
+          .map((id:any) => allUsers.find(u => u.id === id)?.name)
+          .filter(Boolean).join(", ");
+
+        return {
+          "Tên Công việc": t.content,
+          "Dự án": board?.name || "Không rõ",
+          "Cột/Trạng thái": col?.title || "Không rõ",
+          "Người thực hiện": assignees || "Chưa giao",
+          "Độ ưu tiên": translatePriority(priorityConfig[t.priority || "normal"]?.label, lang),
+          "Hạn chót": t.due_date || "Không có",
+          "Ngày tạo": format(new Date(t.created_at), "dd/MM/yyyy")
+        };
+      }) || [];
+
+      // 4. Chuẩn bị Sheet: Nhân sự
+      const usersSheetData = allUsers.map(u => ({
+        "Họ tên": u.name,
+        "Email": u.email,
+        "Ngày tham gia": format(new Date(u.created_at), "dd/MM/yyyy")
+      }));
+
+      // 5. Tạo file Excel nhiều Tab
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(boardsSheetData), "Danh sach Du an");
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(tasksSheetData), "Toan bo Cong viec");
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(usersSheetData), "Nhan su");
+
+      XLSX.writeFile(workbook, `Full_Backup_System_${format(new Date(), "ddMMyyyy")}.xlsx`);
+      toast.success("Đã xuất file sao lưu hệ thống thành công!", { id: "backup" });
+    } catch (error) {
+      toast.error("Lỗi khi tạo file backup!", { id: "backup" });
+    }
+  };
 
   useEffect(() => {
     if (boardIdFromUrl) {
@@ -564,10 +620,21 @@ export default function KanbanApp({ session }: { session: any }) {
     if (!activeBoardId) return;
     if (!isManager) { toast.error("Bạn không có quyền thực hiện thao tác này!"); return; }
 
-    const isMe = userId === currentUser.id;
+const isMe = userId === currentUser.id;
     if (isMe) {
-      const adminCount = activeBoardMembers.filter((m: any) => m.role === "admin" || m.role === "Quản lý" || m.role === "manager").length;
-      if (adminCount <= 1) { toast.error("Bạn là Quản lý duy nhất! Hãy cấp quyền cho người khác trước khi rời đi, hoặc Xóa luôn dự án này.", { duration: 4000 }); return; }
+      // 👇 BỔ SUNG: Kiểm tra xem TÔI đang là chức vụ gì
+      const myMembership = activeBoardMembers.find((m: any) => m.id === currentUser.id);
+      const myRole = myMembership?.role?.toLowerCase() || "";
+      const amIManager = myRole === "admin" || myRole === "quản lý" || myRole === "manager";
+
+      // 👇 Chỉ chặn nếu TÔI LÀ QUẢN LÝ và tôi là người cuối cùng
+      if (amIManager) {
+        const adminCount = activeBoardMembers.filter((m: any) => m.role === "admin" || m.role === "Quản lý" || m.role === "manager").length;
+        if (adminCount <= 1) { 
+          toast.error("Bạn là Quản lý duy nhất! Hãy cấp quyền cho người khác trước khi rời đi, hoặc Xóa luôn dự án này.", { duration: 4000 }); 
+          return; 
+        }
+      }
     }
 
     // THAY VÌ HIỆN CONFIRM CỦA TRÌNH DUYỆT, TA MỞ MODAL
@@ -1124,6 +1191,7 @@ if (assigneesChanged) {
         isSuperAdmin={isSuperAdmin}
         allUsers={allUsers}
         onTransferSuperAdmin={handleTransferSuperAdmin}
+        onExportFullBackup={handleExportFullBackup}
       />
 
       {/* ========================================== */}

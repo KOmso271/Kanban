@@ -8,7 +8,8 @@ import { translations } from "@/lib/translations";
 export default function ProfileModal({ 
   isOpen, onClose, myProfile, onProfileUpdate,
   lang = "vi", 
-  isSuperAdmin, allUsers, onTransferSuperAdmin 
+  isSuperAdmin, allUsers, onTransferSuperAdmin,
+  onExportFullBackup // 👇 Thêm hàm Export vào props
 }: any) {
 
   // KÍCH HOẠT TỪ ĐIỂN
@@ -30,7 +31,6 @@ export default function ProfileModal({
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // 👇 SỬA Ở ĐÂY: Thêm 'advanced' vào kiểu dữ liệu của activeTab
   const [activeTab, setActiveTab] = useState<"profile" | "security" | "advanced">("profile");
 
   // --- States cho Tab 3: Danger Zone (Chuyển quyền) ---
@@ -38,6 +38,10 @@ export default function ProfileModal({
   const [confirmEmailInput, setConfirmEmailInput] = useState("");
   const successor = allUsers?.find((u: any) => u.id === selectedSuccessorId);
   const isEmailConfirmed = successor && confirmEmailInput === successor.email;
+
+  // --- States cho Đổi tên công ty ---
+  const [editCompanyName, setEditCompanyName] = useState("");
+  const [isSavingCompany, setIsSavingCompany] = useState(false);
 
   useEffect(() => {
     if (isOpen && myProfile) {
@@ -61,7 +65,26 @@ export default function ProfileModal({
     }
   }, [isOpen, myProfile]);
 
+  useEffect(() => {
+    if (isOpen && isSuperAdmin) {
+      const fetchCompany = async () => {
+        const { data } = await supabase.from('company_settings').select('company_name').single();
+        if (data) setEditCompanyName(data.company_name || "");
+      };
+      fetchCompany();
+    }
+  }, [isOpen, isSuperAdmin]);
+
   if (!isOpen || !myProfile) return null;
+
+  // Xử lý đổi tên công ty
+  const handleUpdateCompanyName = async () => {
+    setIsSavingCompany(true);
+    const { error } = await supabase.from('company_settings').update({ company_name: editCompanyName.trim() }).eq('id', 1);
+    if (!error) toast.success("Đã đổi tên công ty!");
+    else toast.error("Lỗi cập nhật tên!");
+    setIsSavingCompany(false);
+  };
 
   // Xử lý đổi Avatar
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -164,7 +187,6 @@ export default function ProfileModal({
             {activeTab === 'security' && <span className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 dark:bg-blue-400 rounded-t-full"></span>}
           </button>
           
-          {/* 👇 SỬA Ở ĐÂY: Thêm Tab thứ 3 chỉ dành cho Super Admin 👇 */}
           {isSuperAdmin && (
             <button onClick={() => setActiveTab("advanced")} className={`pb-2.5 text-[13px] font-medium transition-colors flex-shrink-0 relative ${activeTab === 'advanced' ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'}`}>
               Cài đặt nâng cao
@@ -215,7 +237,6 @@ export default function ProfileModal({
                 <p>{t.passwordRequirements}</p>
               </div>
 
-              {/* Form đổi pass... */}
               <div>
                 <label className="block text-[12px] font-medium text-slate-500 mb-1.5">{t.currentPassword}</label>
                 <div className="relative">
@@ -256,7 +277,47 @@ export default function ProfileModal({
           {/* NỘI DUNG TAB 3: CÀI ĐẶT NÂNG CAO (SUPER ADMIN) */}
           {/* ===================================== */}
           {activeTab === "advanced" && isSuperAdmin && allUsers && (
-            <div className="animate-in fade-in slide-in-from-right-2 duration-200">
+            <div className="space-y-6 animate-in fade-in slide-in-from-right-2 duration-200">
+              
+              {/* PHẦN 1: TÊN CÔNG TY */}
+              <div className="bg-slate-50 dark:bg-[#1C1F26] p-4 rounded-xl border border-slate-200 dark:border-slate-800">
+                <h3 className="text-[13px] font-bold text-slate-800 dark:text-slate-100 mb-3 flex items-center gap-2">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 21h18M3 7v1a3 3 0 0 0 6 0V7m6 1a3 3 0 1 0 6 0V7"/></svg>
+                  Định danh tổ chức
+                </h3>
+                <div className="flex gap-2">
+                  <input 
+                    value={editCompanyName} 
+                    onChange={e => setEditCompanyName(e.target.value)}
+                    placeholder="Tên công ty/Không gian..."
+                    className="flex-1 text-[13px] bg-white dark:bg-[#0E1116] border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 outline-none focus:border-blue-500 dark:text-white"
+                  />
+                  <button 
+                    onClick={handleUpdateCompanyName}
+                    disabled={isSavingCompany || !editCompanyName.trim()}
+                    className="px-4 py-2 bg-blue-600 text-white text-[12px] font-bold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  >
+                    {isSavingCompany ? "..." : "Lưu"}
+                  </button>
+                </div>
+              </div>
+
+              {/* PHẦN 2: SAO LƯU DỮ LIỆU */}
+              <div className="bg-slate-50 dark:bg-[#1C1F26] p-4 rounded-xl border border-slate-200 dark:border-slate-800">
+                <h3 className="text-[13px] font-bold text-slate-800 dark:text-slate-100 mb-2 flex items-center gap-2">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                  Dữ liệu hệ thống
+                </h3>
+                <p className="text-[11px] text-slate-500 mb-4">Tải xuống toàn bộ thông tin dự án, nhân sự và công việc dưới dạng file Excel.</p>
+                <button 
+                  onClick={onExportFullBackup}
+                  className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[13px] font-bold rounded-lg transition-colors flex items-center justify-center gap-2"
+                >
+                  Tải xuống bản sao lưu (.xlsx)
+                </button>
+              </div>
+
+              {/* PHẦN 3: DANGER ZONE */}
               <div className="rounded-xl border border-red-200 bg-red-50/30 p-5 dark:border-red-900/30 dark:bg-red-900/10">
                 <h3 className="mb-1 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-red-600 dark:text-red-500">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
